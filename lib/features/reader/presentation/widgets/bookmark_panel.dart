@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../shared/models/annotation_model.dart';
 import '../../domain/annotation_provider.dart';
 
 /// Panel for displaying and managing bookmarks

@@ -191,6 +191,17 @@ class DocumentRepository {
   }
   
   /// Update document
+  /// Get document file (for mobile/desktop)
+  Future<File?> getDocumentFile(String documentId) async {
+    final doc = getDocument(documentId);
+    if (doc == null) return null;
+    
+    final file = File(doc.filePath);
+    if (await file.exists()) {
+      return file;
+    }
+    return null;
+  }
   Future<void> updateDocument(DocumentModel document) async {
     await _box.put(document.id, document);
   }
