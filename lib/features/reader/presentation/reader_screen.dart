@@ -8,9 +8,12 @@ import 'package:pdfx/pdfx.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../domain/reader_provider.dart';
+import '../domain/annotation_provider.dart';
 import 'widgets/reader_app_bar.dart';
 import 'widgets/reader_bottom_bar.dart';
 import 'widgets/page_thumbnail_strip.dart';
+import 'widgets/bookmark_panel.dart';
+import 'widgets/sticky_note_widget.dart';
 
 /// Reader screen for viewing PDF documents
 class ReaderScreen extends ConsumerStatefulWidget {
@@ -48,6 +51,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   Widget build(BuildContext context) {
     final readerState = ref.watch(readerProvider(widget.documentId));
     final readerNotifier = ref.read(readerProvider(widget.documentId).notifier);
+    
+    // Watch annotation state to update bookmark icon
+    ref.watch(annotationProvider(widget.documentId));
 
     // Handle loading state
     if (readerState.isLoading) {
@@ -126,7 +132,12 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
             // PDF Viewer
             PdfViewPinch(
               controller: controller,
-              onPageChanged: (page) => readerNotifier.onPageChanged(page),
+              onPageChanged: (page) {
+                readerNotifier.onPageChanged(page);
+                // Update annotation provider's current page
+                ref.read(annotationProvider(widget.documentId).notifier)
+                    .setCurrentPage(page);
+              },
               padding: 0,
               scrollDirection: readerState.readingMode == ReadingMode.continuous
                   ? Axis.vertical
@@ -170,12 +181,15 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                 left: 0,
                 right: 0,
                 child: ReaderBottomBar(
+                  documentId: widget.documentId,
                   currentPage: readerState.currentPage,
                   totalPages: readerState.totalPages,
                   onPageChanged: (page) => readerNotifier.goToPage(page),
                   onPrevious: () => readerNotifier.previousPage(),
                   onNext: () => readerNotifier.nextPage(),
                   onThumbnailToggle: () => readerNotifier.toggleThumbnails(),
+                  onBookmarkTap: () => _showBookmarksPanel(context, readerState),
+                  onNoteTap: () => _showNotesPanel(context, readerState),
                 ),
               ),
 
@@ -194,6 +208,37 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showBookmarksPanel(BuildContext context, ReaderState readerState) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => BookmarkPanel(
+        documentId: widget.documentId,
+        currentPage: readerState.currentPage,
+        totalPages: readerState.totalPages,
+        onPageSelected: (page) {
+          ref.read(readerProvider(widget.documentId).notifier).goToPage(page);
+        },
+      ),
+    );
+  }
+
+  void _showNotesPanel(BuildContext context, ReaderState readerState) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => NotesPanel(
+        documentId: widget.documentId,
+        currentPage: readerState.currentPage,
+        onPageSelected: (page) {
+          ref.read(readerProvider(widget.documentId).notifier).goToPage(page);
+        },
       ),
     );
   }

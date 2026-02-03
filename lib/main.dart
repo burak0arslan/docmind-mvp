@@ -6,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import 'app/app.dart';
 import 'shared/models/document_model.dart';
+import 'shared/models/annotation_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,9 +28,19 @@ void main() async {
   if (!Hive.isAdapterRegistered(0)) {
     Hive.registerAdapter(DocumentModelAdapter());
   }
+  if (!Hive.isAdapterRegistered(1)) {
+    Hive.registerAdapter(AnnotationTypeAdapter());
+  }
+  if (!Hive.isAdapterRegistered(2)) {
+    Hive.registerAdapter(HighlightColorAdapter());
+  }
+  if (!Hive.isAdapterRegistered(3)) {
+    Hive.registerAdapter(AnnotationModelAdapter());
+  }
   
   // Open boxes
   await Hive.openBox<DocumentModel>('documents');
+  await Hive.openBox<AnnotationModel>('annotations');
 
   runApp(
     const ProviderScope(

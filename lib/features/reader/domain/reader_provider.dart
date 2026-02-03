@@ -85,7 +85,6 @@ class ReaderNotifier extends StateNotifier<ReaderState> {
   final DocumentRepository _repository;
   final String documentId;
   PdfControllerPinch? _pdfController;
-  Uint8List? _pdfBytes; // Store bytes for web
 
   ReaderNotifier(this._repository, this.documentId) : super(const ReaderState()) {
     loadDocument();
@@ -96,6 +95,10 @@ class ReaderNotifier extends StateNotifier<ReaderState> {
 
   /// Load the document
   Future<void> loadDocument() async {
+    // Dispose any existing controller first
+    _pdfController?.dispose();
+    _pdfController = null;
+    
     state = state.copyWith(isLoading: true, error: null);
 
     try {
@@ -245,7 +248,8 @@ class ReaderNotifier extends StateNotifier<ReaderState> {
 }
 
 /// Provider family for reader state (one per document)
-final readerProvider = StateNotifierProvider.family<ReaderNotifier, ReaderState, String>(
+/// Using autoDispose to ensure fresh state each time document is opened
+final readerProvider = StateNotifierProvider.autoDispose.family<ReaderNotifier, ReaderState, String>(
   (ref, documentId) {
     final repository = ref.watch(documentRepositoryProvider);
     return ReaderNotifier(repository, documentId);
