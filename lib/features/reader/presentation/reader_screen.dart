@@ -14,6 +14,7 @@ import '../../home/data/document_repository.dart';
 import '../domain/annotation_provider.dart';
 import 'widgets/bookmark_panel.dart';
 import 'widgets/sticky_note_widget.dart';
+import 'widgets/theme_selector.dart';
 
 /// Reader screen for viewing PDF documents
 class ReaderScreen extends ConsumerStatefulWidget {
@@ -37,6 +38,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   int _totalPages = 0;
   bool _showControls = true;
   bool _showThumbnails = false;
+  
+  // Reading theme
+  ReadingTheme _readingTheme = ReadingTheme.light;
   
   // Thumbnail cache
   final Map<int, Uint8List> _thumbnailCache = {};
@@ -116,7 +120,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         _isLoading = false;
       });
       
-      // Pre-load first few thumbnails
       _preloadThumbnails();
     } catch (e) {
       setState(() {
@@ -129,7 +132,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   Future<void> _preloadThumbnails() async {
     if (_pdfDocument == null) return;
     
-    // Load thumbnails for first 5 pages
     for (int i = 1; i <= _totalPages.clamp(0, 5); i++) {
       await _loadThumbnail(i);
     }
@@ -180,7 +182,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     ref.read(annotationProvider(widget.documentId).notifier)
         .setCurrentPage(page);
         
-    // Load nearby thumbnails
     _loadNearbyThumbnails(page);
   }
   
@@ -196,10 +197,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     if (page < 1 || page > _totalPages) return;
     if (_pdfController == null) return;
     
-    print('Going to page: $page');
     _pdfController!.jumpToPage(page - 1);
     
-    // Update state immediately for responsive UI
     setState(() {
       _currentPage = page;
     });
@@ -228,6 +227,37 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       _showThumbnails = !_showThumbnails;
     });
   }
+  
+  void _setReadingTheme(ReadingTheme theme) {
+    setState(() {
+      _readingTheme = theme;
+    });
+  }
+  
+  /// Get color filter for reading theme
+  ColorFilter _getColorFilter() {
+    switch (_readingTheme) {
+      case ReadingTheme.light:
+        // No filter for light mode
+        return const ColorFilter.mode(Colors.transparent, BlendMode.dst);
+      case ReadingTheme.sepia:
+        // Sepia tone filter
+        return const ColorFilter.matrix(<double>[
+          0.94, 0.14, 0.05, 0, 0,
+          0.10, 0.86, 0.05, 0, 0,
+          0.07, 0.10, 0.79, 0, 0,
+          0,    0,    0,    1, 0,
+        ]);
+      case ReadingTheme.dark:
+        // Invert colors for dark mode (white text on black)
+        return const ColorFilter.matrix(<double>[
+          -1,  0,  0, 0, 255,
+           0, -1,  0, 0, 255,
+           0,  0, -1, 0, 255,
+           0,  0,  0, 1,   0,
+        ]);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -235,25 +265,36 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
     if (_isLoading) {
       return Scaffold(
+        backgroundColor: _readingTheme.backgroundColor,
         appBar: AppBar(
+          backgroundColor: _readingTheme.surfaceColor,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
+            icon: Icon(Icons.arrow_back, color: _readingTheme.textColor),
             onPressed: () => context.go('/'),
           ),
-          title: const Text('Loading...'),
+          title: Text(
+            'Loading...',
+            style: TextStyle(color: _readingTheme.textColor),
+          ),
         ),
-        body: const Center(child: CircularProgressIndicator()),
+        body: Center(
+          child: CircularProgressIndicator(
+            color: _readingTheme.textColor,
+          ),
+        ),
       );
     }
 
     if (_error != null) {
       return Scaffold(
+        backgroundColor: _readingTheme.backgroundColor,
         appBar: AppBar(
+          backgroundColor: _readingTheme.surfaceColor,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
+            icon: Icon(Icons.arrow_back, color: _readingTheme.textColor),
             onPressed: () => context.go('/'),
           ),
-          title: const Text('Error'),
+          title: Text('Error', style: TextStyle(color: _readingTheme.textColor)),
         ),
         body: Center(
           child: Padding(
@@ -277,34 +318,47 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     }
 
     if (_pdfController == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: _readingTheme.backgroundColor,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade900,
+      backgroundColor: _readingTheme.backgroundColor,
       body: GestureDetector(
         onTap: _toggleControls,
         child: Stack(
           children: [
-            // PDF Viewer
-            PdfViewPinch(
-              controller: _pdfController!,
-              onPageChanged: _onPageChanged,
-              padding: 0,
-              builders: PdfViewPinchBuilders<DefaultBuilderOptions>(
-                options: const DefaultBuilderOptions(),
-                documentLoaderBuilder: (_) => const Center(
-                  child: CircularProgressIndicator(),
-                ),
-                pageLoaderBuilder: (_) => const Center(
-                  child: CircularProgressIndicator(),
-                ),
-                errorBuilder: (_, error) => Center(
-                  child: Text(
-                    'Error loading page: $error',
-                    style: const TextStyle(color: AppColors.error),
+            // Background color layer
+            Container(
+              color: _readingTheme.backgroundColor,
+            ),
+            
+            // PDF Viewer with color filters for themes
+            ColorFiltered(
+              colorFilter: _getColorFilter(),
+              child: PdfViewPinch(
+                controller: _pdfController!,
+                onPageChanged: _onPageChanged,
+                padding: 0,
+                builders: PdfViewPinchBuilders<DefaultBuilderOptions>(
+                  options: const DefaultBuilderOptions(),
+                  documentLoaderBuilder: (_) => Center(
+                    child: CircularProgressIndicator(
+                      color: _readingTheme.textColor,
+                    ),
+                  ),
+                  pageLoaderBuilder: (_) => Center(
+                    child: CircularProgressIndicator(
+                      color: _readingTheme.textColor,
+                    ),
+                  ),
+                  errorBuilder: (_, error) => Center(
+                    child: Text(
+                      'Error loading page: $error',
+                      style: const TextStyle(color: AppColors.error),
+                    ),
                   ),
                 ),
               ),
@@ -396,11 +450,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                   ],
                 ),
               ),
-              // Go to page button
+              // Theme button
               IconButton(
-                icon: const Icon(Icons.find_in_page, color: Colors.white),
-                onPressed: () => _showGoToPageDialog(),
-                tooltip: 'Go to page',
+                icon: Icon(_readingTheme.icon, color: Colors.white),
+                onPressed: () => _showThemeSelector(),
+                tooltip: 'Reading Theme',
               ),
               IconButton(
                 icon: const Icon(Icons.more_vert, color: Colors.white),
@@ -550,10 +604,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
           final isCurrentPage = pageNumber == _currentPage;
 
           return GestureDetector(
-            onTap: () {
-              print('Thumbnail tapped: page $pageNumber');
-              _goToPage(pageNumber);
-            },
+            onTap: () => _goToPage(pageNumber),
             child: Container(
               width: 65,
               margin: const EdgeInsets.only(right: AppSpacing.sm),
@@ -585,7 +636,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    // Thumbnail image
                     _thumbnailCache.containsKey(pageNumber)
                         ? Image.memory(
                             _thumbnailCache[pageNumber]!,
@@ -605,8 +655,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                               return _buildPlaceholder();
                             },
                           ),
-                    
-                    // Page number badge
                     Positioned(
                       bottom: 4,
                       left: 0,
@@ -687,6 +735,17 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     );
   }
 
+  void _showThemeSelector() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ThemeSelectorSheet(
+        currentTheme: _readingTheme,
+        onThemeChanged: _setReadingTheme,
+      ),
+    );
+  }
+
   void _showGoToPageDialog() {
     final controller = TextEditingController(text: _currentPage.toString());
     showDialog(
@@ -733,7 +792,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
               },
             ),
             const SizedBox(height: 16),
-            // Quick jump buttons
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -801,6 +859,15 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                 color: Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(2),
               ),
+            ),
+            ListTile(
+              leading: Icon(_readingTheme.icon),
+              title: const Text('Reading Theme'),
+              subtitle: Text(_readingTheme.name),
+              onTap: () {
+                Navigator.pop(context);
+                _showThemeSelector();
+              },
             ),
             ListTile(
               leading: const Icon(Icons.find_in_page),
