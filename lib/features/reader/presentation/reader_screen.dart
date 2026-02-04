@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -394,6 +396,12 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                   ],
                 ),
               ),
+              // Go to page button
+              IconButton(
+                icon: const Icon(Icons.find_in_page, color: Colors.white),
+                onPressed: () => _showGoToPageDialog(),
+                tooltip: 'Go to page',
+              ),
               IconButton(
                 icon: const Icon(Icons.more_vert, color: Colors.white),
                 onPressed: () => _showMoreOptions(),
@@ -480,7 +488,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                     tooltip: 'Notes',
                   ),
                   GestureDetector(
-                    onTap: () => _showPagePicker(),
+                    onTap: () => _showGoToPageDialog(),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.md,
@@ -679,13 +687,129 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     );
   }
 
+  void _showGoToPageDialog() {
+    final controller = TextEditingController(text: _currentPage.toString());
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.find_in_page, color: AppColors.primary),
+            ),
+            const SizedBox(width: 12),
+            const Text('Go to Page'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Page number',
+                hintText: '1 - $_totalPages',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                prefixIcon: const Icon(Icons.numbers),
+              ),
+              onSubmitted: (value) {
+                final page = int.tryParse(value);
+                if (page != null && page >= 1 && page <= _totalPages) {
+                  Navigator.pop(context);
+                  _goToPage(page);
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+            // Quick jump buttons
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                _buildQuickJumpButton('First', 1),
+                if (_totalPages > 10) _buildQuickJumpButton('25%', (_totalPages * 0.25).round()),
+                _buildQuickJumpButton('Middle', (_totalPages / 2).round()),
+                if (_totalPages > 10) _buildQuickJumpButton('75%', (_totalPages * 0.75).round()),
+                _buildQuickJumpButton('Last', _totalPages),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final page = int.tryParse(controller.text);
+              if (page != null && page >= 1 && page <= _totalPages) {
+                Navigator.pop(context);
+                _goToPage(page);
+              }
+            },
+            child: const Text('Go'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickJumpButton(String label, int page) {
+    final isCurrentPage = page == _currentPage;
+    return ActionChip(
+      label: Text(label),
+      backgroundColor: isCurrentPage ? AppColors.primary.withOpacity(0.2) : null,
+      side: BorderSide(
+        color: isCurrentPage ? AppColors.primary : Colors.grey.shade300,
+      ),
+      onPressed: () {
+        Navigator.pop(context);
+        _goToPage(page);
+      },
+    );
+  }
+
   void _showMoreOptions() {
     showModalBottomSheet(
       context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.find_in_page),
+              title: const Text('Go to Page'),
+              onTap: () {
+                Navigator.pop(context);
+                _showGoToPageDialog();
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.first_page),
               title: const Text('Go to First Page'),
@@ -702,41 +826,90 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                 _goToPage(_totalPages);
               },
             ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text('Document Info'),
+              onTap: () {
+                Navigator.pop(context);
+                _showDocumentInfo();
+              },
+            ),
+            const SizedBox(height: 8),
           ],
         ),
       ),
     );
   }
 
-  void _showPagePicker() {
-    final controller = TextEditingController(text: _currentPage.toString());
+  void _showDocumentInfo() {
+    final repository = ref.read(documentRepositoryProvider);
+    final document = repository.getDocument(widget.documentId);
+    
+    if (document == null) return;
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Go to Page'),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          autofocus: true,
-          decoration: InputDecoration(
-            labelText: 'Page number',
-            hintText: '1 - $_totalPages',
-          ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.info_outline, color: AppColors.primary),
+            ),
+            const SizedBox(width: 12),
+            const Text('Document Info'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildInfoRow(Icons.description, 'Name', document.name),
+            _buildInfoRow(Icons.insert_drive_file, 'Type', document.fileExtension.toUpperCase()),
+            _buildInfoRow(Icons.data_usage, 'Size', document.formattedFileSize),
+            _buildInfoRow(Icons.layers, 'Pages', '$_totalPages'),
+            _buildInfoRow(Icons.bookmark, 'Current Page', '$_currentPage'),
+            _buildInfoRow(Icons.percent, 'Progress', '${document.readingProgress.toStringAsFixed(1)}%'),
+          ],
         ),
         actions: [
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text('Close'),
           ),
-          TextButton(
-            onPressed: () {
-              final page = int.tryParse(controller.text);
-              if (page != null && page >= 1 && page <= _totalPages) {
-                Navigator.pop(context);
-                _goToPage(page);
-              }
-            },
-            child: const Text('Go'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Colors.grey.shade600),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey.shade600,
+              fontSize: 14,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
           ),
         ],
       ),
