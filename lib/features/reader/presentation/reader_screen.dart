@@ -10,11 +10,13 @@ import 'package:pdfx/pdfx.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/models/annotation_model.dart';
 import '../../home/data/document_repository.dart';
 import '../domain/annotation_provider.dart';
 import 'widgets/bookmark_panel.dart';
 import 'widgets/sticky_note_widget.dart';
 import 'widgets/theme_selector.dart';
+import 'widgets/highlight_overlay.dart';
 
 /// Reader screen for viewing PDF documents
 class ReaderScreen extends ConsumerStatefulWidget {
@@ -41,6 +43,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   
   // Reading theme
   ReadingTheme _readingTheme = ReadingTheme.light;
+  
+  // Highlight mode
+  bool _isHighlightMode = false;
+  int _selectedColorIndex = 0;
   
   // Thumbnail cache
   final Map<int, Uint8List> _thumbnailCache = {};
@@ -228,6 +234,15 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     });
   }
   
+  void _toggleHighlightMode() {
+    setState(() {
+      _isHighlightMode = !_isHighlightMode;
+      if (_isHighlightMode) {
+        _showControls = true; // Show controls when entering highlight mode
+      }
+    });
+  }
+  
   void _setReadingTheme(ReadingTheme theme) {
     setState(() {
       _readingTheme = theme;
@@ -390,6 +405,125 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                 right: 0,
                 child: _buildThumbnailStrip(),
               ),
+            
+            // Highlight drawing overlay
+            Positioned.fill(
+              child: HighlightDrawingOverlay(
+                documentId: widget.documentId,
+                currentPage: _currentPage,
+                isEnabled: _isHighlightMode,
+                selectedColorIndex: _selectedColorIndex,
+                onHighlightDrawn: () {
+                  // Optionally show feedback
+                },
+              ),
+            ),
+            
+            // Highlight color picker (shown when in highlight mode)
+            if (_isHighlightMode && _showControls)
+              Positioned(
+                right: 16,
+                bottom: _showThumbnails ? 240 : 140,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ...HighlightColor.values.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final color = entry.value;
+                        final isSelected = _selectedColorIndex == index;
+                        return GestureDetector(
+                          onTap: () => setState(() => _selectedColorIndex = index),
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            decoration: BoxDecoration(
+                              color: color.color,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isSelected ? color.darkColor : Colors.transparent,
+                                width: 3,
+                              ),
+                            ),
+                            child: isSelected
+                                ? Icon(Icons.check, color: color.darkColor, size: 18)
+                                : null,
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: _toggleHighlightMode,
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.close, size: 20),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            
+            // Highlight mode indicator banner
+            if (_isHighlightMode)
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 60,
+                left: 16,
+                right: 16,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.highlight, color: Colors.white, size: 20),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Highlight Mode: Draw rectangles on the page',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: _toggleHighlightMode,
+                        child: const Icon(Icons.close, color: Colors.white, size: 20),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -526,56 +660,92 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                 ],
               ),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
+                  // Thumbnails
                   IconButton(
                     icon: Icon(
                       Icons.view_comfy,
                       color: _showThumbnails ? AppColors.primary : Colors.white,
+                      size: 22,
                     ),
                     onPressed: _toggleThumbnails,
                     tooltip: 'Thumbnails',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
+                  // Highlight
                   IconButton(
-                    icon: const Icon(Icons.sticky_note_2_outlined, color: Colors.white),
+                    icon: Icon(
+                      Icons.highlight,
+                      color: _isHighlightMode ? AppColors.warning : Colors.white,
+                      size: 22,
+                    ),
+                    onPressed: _toggleHighlightMode,
+                    tooltip: 'Highlight',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                  // Notes
+                  IconButton(
+                    icon: const Icon(
+                      Icons.sticky_note_2_outlined,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                     onPressed: () => _showNotesPanel(),
                     tooltip: 'Notes',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
+                  // Page indicator
                   GestureDetector(
                     onTap: () => _showGoToPageDialog(),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md,
-                        vertical: AppSpacing.sm,
+                        horizontal: 10,
+                        vertical: 4,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(AppSizing.radiusFull),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        '$_currentPage / $_totalPages',
+                        '$_currentPage/$_totalPages',
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
+                          fontSize: 12,
                         ),
                       ),
                     ),
                   ),
+                  // Bookmarks list
                   IconButton(
-                    icon: const Icon(Icons.collections_bookmark_outlined, color: Colors.white),
+                    icon: const Icon(
+                      Icons.collections_bookmark_outlined,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                     onPressed: () => _showBookmarksPanel(),
                     tooltip: 'Bookmarks',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
+                  // Bookmark toggle
                   IconButton(
                     icon: Icon(
                       isBookmarked ? Icons.bookmark : Icons.bookmark_border,
                       color: isBookmarked ? AppColors.warning : Colors.white,
+                      size: 22,
                     ),
                     onPressed: () {
                       ref.read(annotationProvider(widget.documentId).notifier)
                           .toggleBookmark(_currentPage);
                     },
                     tooltip: isBookmarked ? 'Remove bookmark' : 'Add bookmark',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
                 ],
               ),
