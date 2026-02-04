@@ -182,12 +182,41 @@ class DocumentRepository {
   }
   
   /// Get document bytes (for web)
+ /// Get document bytes (for web)
+  /// Get document bytes (for web)
   Future<Uint8List?> getDocumentBytes(String documentId) async {
-    final bytesBox = await Hive.openBox<List<int>>('document_bytes');
-    final bytes = bytesBox.get(documentId);
-    if (bytes == null) return null;
-    // Create a fresh Uint8List from the stored List<int>
-    return Uint8List.fromList(bytes);
+    try {
+      // Use the already opened box, don't specify type
+      final bytesBox = Hive.box<List<int>>('document_bytes');
+      final storedData = bytesBox.get(documentId);
+      if (storedData == null) {
+        print('No bytes found for document: $documentId');
+        return null;
+      }
+      
+      // Handle type casting for web (JSArray<dynamic> to List<int>)
+      List<int> storedBytes;
+      try {
+        storedBytes = List<int>.from(storedData);
+      } catch (e) {
+        print('Type conversion error: $e');
+        return null;
+      }
+      
+      if (storedBytes.isEmpty) {
+        print('Empty bytes for document: $documentId');
+        return null;
+      }
+      
+      // Create a completely new Uint8List
+      final result = Uint8List.fromList(storedBytes);
+      
+      print('Loaded ${result.length} bytes for document: $documentId');
+      return result;
+    } catch (e) {
+      print('Error getting document bytes: $e');
+      return null;
+    }
   }
   
   /// Update document
