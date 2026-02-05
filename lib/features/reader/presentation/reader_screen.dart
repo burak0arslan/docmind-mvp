@@ -378,6 +378,19 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                 ),
               ),
             ),
+            
+            // Highlight drawing overlay (must be before controls so they stay clickable)
+            Positioned.fill(
+              child: HighlightDrawingOverlay(
+                documentId: widget.documentId,
+                currentPage: _currentPage,
+                isEnabled: _isHighlightMode,
+                selectedColorIndex: _selectedColorIndex,
+                onHighlightDrawn: () {
+                  // Optionally show feedback
+                },
+              ),
+            ),
 
             // Top app bar
             if (_showControls)
@@ -405,19 +418,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                 right: 0,
                 child: _buildThumbnailStrip(),
               ),
-            
-            // Highlight drawing overlay
-            Positioned.fill(
-              child: HighlightDrawingOverlay(
-                documentId: widget.documentId,
-                currentPage: _currentPage,
-                isEnabled: _isHighlightMode,
-                selectedColorIndex: _selectedColorIndex,
-                onHighlightDrawn: () {
-                  // Optionally show feedback
-                },
-              ),
-            ),
             
             // Highlight color picker (shown when in highlight mode)
             if (_isHighlightMode && _showControls)

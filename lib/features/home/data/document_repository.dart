@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -138,16 +139,14 @@ class DocumentRepository {
     
     final id = _uuid.v4();
     
-    // On web, we store the bytes in memory (via a special path convention)
-    // For this MVP, we'll use a data URL approach or store in IndexedDB via Hive
     String filePath;
     
     if (kIsWeb) {
-      // On web, store bytes as a List<int> in a separate Hive box
-      // This avoids the detached ArrayBuffer issue
-      final bytesBox = await Hive.openBox<List<int>>('document_bytes');
-      await bytesBox.put(id, bytes.toList()); // Convert to regular List<int>
-      filePath = 'hive://$id'; // Special marker for web storage
+      // On web, store bytes as base64 string for reliable persistence
+      final bytesBox = await Hive.openBox<String>('document_bytes_b64');
+      final base64String = base64Encode(bytes);
+      await bytesBox.put(id, base64String);
+      filePath = 'hive://$id';
     } else {
       // On mobile/desktop, save to file system
       final appDir = await getApplicationDocumentsDirectory();
@@ -182,34 +181,19 @@ class DocumentRepository {
   }
   
   /// Get document bytes (for web)
- /// Get document bytes (for web)
-  /// Get document bytes (for web)
   Future<Uint8List?> getDocumentBytes(String documentId) async {
     try {
-      // Use the already opened box, don't specify type
-      final bytesBox = Hive.box<List<int>>('document_bytes');
-      final storedData = bytesBox.get(documentId);
-      if (storedData == null) {
+      // Open box with base64 strings
+      final bytesBox = await Hive.openBox<String>('document_bytes_b64');
+      final base64String = bytesBox.get(documentId);
+      
+      if (base64String == null || base64String.isEmpty) {
         print('No bytes found for document: $documentId');
         return null;
       }
       
-      // Handle type casting for web (JSArray<dynamic> to List<int>)
-      List<int> storedBytes;
-      try {
-        storedBytes = List<int>.from(storedData);
-      } catch (e) {
-        print('Type conversion error: $e');
-        return null;
-      }
-      
-      if (storedBytes.isEmpty) {
-        print('Empty bytes for document: $documentId');
-        return null;
-      }
-      
-      // Create a completely new Uint8List
-      final result = Uint8List.fromList(storedBytes);
+      // Decode base64 to bytes
+      final result = base64Decode(base64String);
       
       print('Loaded ${result.length} bytes for document: $documentId');
       return result;
@@ -219,7 +203,6 @@ class DocumentRepository {
     }
   }
   
-  /// Update document
   /// Get document file (for mobile/desktop)
   Future<File?> getDocumentFile(String documentId) async {
     final doc = getDocument(documentId);
@@ -231,6 +214,8 @@ class DocumentRepository {
     }
     return null;
   }
+  
+  /// Update document
   Future<void> updateDocument(DocumentModel document) async {
     await _box.put(document.id, document);
   }
@@ -287,7 +272,7 @@ class DocumentRepository {
     if (doc != null) {
       if (kIsWeb) {
         // Delete from bytes storage
-        final bytesBox = await Hive.openBox<List<int>>('document_bytes');
+        final bytesBox = await Hive.openBox<String>('document_bytes_b64');
         await bytesBox.delete(documentId);
       } else {
         // Delete file from disk
