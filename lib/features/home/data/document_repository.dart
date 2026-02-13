@@ -245,7 +245,10 @@ class DocumentRepository {
         lastOpenedAt: DateTime.now(),
       );
       await updateDocument(updated);
-    }
+      print('Progress saved: page $currentPage for document $documentId');  // ADD THIS
+  } else {
+     print('ERROR: Document not found: $documentId');  // ADD THIS TOO
+  }
   }
   
   /// Update page count (called after loading PDF)

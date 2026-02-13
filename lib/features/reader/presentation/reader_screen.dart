@@ -62,6 +62,14 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
   @override
   void dispose() {
+     // Save final progress before closing
+  final repository = ref.read(documentRepositoryProvider);
+  repository.updateProgress(
+    documentId: widget.documentId,
+    currentPage: _currentPage,
+  );
+  print('Final progress saved: page $_currentPage');
+  
     _pdfController?.dispose();
     _pdfDocument?.close();
     if (!kIsWeb) {
@@ -173,7 +181,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   }
 
   void _onPageChanged(int page) {
-    if (_currentPage == page) return;
+    
     
     setState(() {
       _currentPage = page;
@@ -556,7 +564,15 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
             children: [
               IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => context.go('/'),
+                onPressed: () {
+                  // Save progress before leaving
+                  final repository = ref.read(documentRepositoryProvider);
+                  repository.updateProgress(
+                    documentId: widget.documentId,
+                    currentPage: _currentPage,
+                  );
+                  context.go('/');
+                },
               ),
               Expanded(
                 child: Column(
