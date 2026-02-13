@@ -72,7 +72,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
             const SizedBox(width: 12),
-            const Text('DocMind'),
+            const Text('PDFx'),
           ],
         ),
         actions: [

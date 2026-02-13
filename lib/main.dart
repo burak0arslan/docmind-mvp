@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'features/splash/presentation/splash_screen.dart';
+
+
 
 import 'app/app.dart';
 import 'shared/models/document_model.dart';
@@ -43,8 +46,10 @@ void main() async {
   await Hive.openBox<AnnotationModel>('annotations');
 
   runApp(
-    const ProviderScope(
+  const ProviderScope(
+    child: SplashScreen(
       child: DocMindApp(),
     ),
-  );
+  ),
+);
 }
