@@ -27,7 +27,7 @@ extension ReadingThemeExtension on ReadingTheme {
       case ReadingTheme.light:
         return Colors.white;
       case ReadingTheme.sepia:
-        return const Color(0xFFF5E6D3);
+        return const Color(0xFFFAF0E6);
       case ReadingTheme.dark:
         return const Color(0xFF1A1A1A);
     }
@@ -38,7 +38,7 @@ extension ReadingThemeExtension on ReadingTheme {
       case ReadingTheme.light:
         return Colors.grey.shade100;
       case ReadingTheme.sepia:
-        return const Color(0xFFEDD9C0);
+        return const Color(0xFFF5E6D3);
       case ReadingTheme.dark:
         return const Color(0xFF2D2D2D);
     }
@@ -49,7 +49,7 @@ extension ReadingThemeExtension on ReadingTheme {
       case ReadingTheme.light:
         return Colors.black87;
       case ReadingTheme.sepia:
-        return const Color(0xFF5D4037);
+        return const Color(0xFF4A3728);
       case ReadingTheme.dark:
         return Colors.white70;
     }

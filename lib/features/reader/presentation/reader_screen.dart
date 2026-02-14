@@ -17,6 +17,8 @@ import 'widgets/bookmark_panel.dart';
 import 'widgets/sticky_note_widget.dart';
 import 'widgets/theme_selector.dart';
 import 'widgets/highlight_overlay.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+
 
 /// Reader screen for viewing PDF documents
 class ReaderScreen extends ConsumerStatefulWidget {
@@ -180,8 +182,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     return null;
   }
 
-  void _onPageChanged(int page) {
-    
+  Future<void> _onPageChanged(int page) async {
     
     setState(() {
       _currentPage = page;
@@ -192,6 +193,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       documentId: widget.documentId,
       currentPage: page,
     );
+
+    await Hive.box('documents').flush();
 
     ref.read(annotationProvider(widget.documentId).notifier)
         .setCurrentPage(page);
@@ -266,9 +269,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       case ReadingTheme.sepia:
         // Sepia tone filter
         return const ColorFilter.matrix(<double>[
-          0.94, 0.14, 0.05, 0, 0,
-          0.10, 0.86, 0.05, 0, 0,
-          0.07, 0.10, 0.79, 0, 0,
+          1.0, 0.18, 0.08, 0, 0,
+          0.12, 0.90, 0.06, 0, 0,
+          0.05, 0.08, 0.75, 0, 0,
           0,    0,    0,    1, 0,
         ]);
       case ReadingTheme.dark:
