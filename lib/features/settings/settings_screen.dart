@@ -96,7 +96,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _donateService.buyCoffee();
     // Result handled in onPurchaseComplete callback
   }
-
+  Widget _buildTipButton(String price) {
+    return ElevatedButton(
+      onPressed: _isLoading ? null : () => _donate(),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF1E3A5F),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      child: Text(
+        price,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+      ),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -137,27 +150,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      onPressed: _isLoading ? null : _donate,
-                      icon: _isLoading 
-                        ? const SizedBox(
-                            width: 20, 
-                            height: 20, 
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Icon(Icons.favorite, color: Colors.white),
-                      label: Text(
-                        _isLoading ? 'Processing...' : 'Support - $_price',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.amber.shade700,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildTipButton('\$0.99'),
+                      _buildTipButton('\$2.99'),
+                      _buildTipButton('\$4.99'),
+                    ],
                   ),
                 ],
               ),
