@@ -25,7 +25,7 @@ dependencies:
   hive_flutter: ^1.1.0
 
   # File Picking
-  file_picker: ^6.1.1
+  file_picker: ^8.0.0
 
   # Path Management
   path_provider: ^2.1.2
@@ -43,6 +43,10 @@ dependencies:
 
   # Permissions
   permission_handler: ^11.2.0
+
+  # App Purchase
+  in_app_purchase: ^3.1.13
+
 
 dev_dependencies:
   flutter_test:

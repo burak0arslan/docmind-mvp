@@ -10,6 +10,8 @@ import '../domain/home_provider.dart';
 import 'widgets/document_card.dart';
 import 'widgets/empty_state.dart';
 import 'widgets/search_bar_widget.dart';
+import '../../settings/settings_screen.dart';
+
 
 /// Home screen showing document library
 class HomeScreen extends ConsumerStatefulWidget {
@@ -84,7 +86,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             onPressed: () {
-              // TODO: Navigate to settings
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
             },
             tooltip: 'Settings',
           ),
