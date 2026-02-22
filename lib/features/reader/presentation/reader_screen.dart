@@ -348,7 +348,17 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       );
     }
 
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+      final repository = ref.read(documentRepositoryProvider);
+      repository.updateProgress(
+        documentId: widget.documentId,
+        currentPage: _currentPage,
+      );
+      context.go('/');
+      return false;
+    },
+    child: Scaffold(
       backgroundColor: _readingTheme.backgroundColor,
       body: GestureDetector(
         onTap: _toggleControls,
@@ -536,7 +546,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildAppBar() {
